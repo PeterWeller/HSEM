@@ -16,11 +16,10 @@ import org.apache.hadoop.util.GenericOptionsParser;
 public class EntityDriver {
 
 	/*
-	 * TODO 添加注释 数据序列化 提交 
-	 * TODO 添加去重校验位
+	 * TODO 添加注释 数据序列化 提交 TODO 添加去重校验位
 	 */
-	// public final static int DIMENSION = 3871; // 随机向量维度
-	public final static int DIMENSION = 13827; // 随机向量维度
+	// public final static int DIMENSION = 3871; // 测试集随机向量维度
+	public final static int DIMENSION = 13827; // CiteSeer随机向量维度
 	public final static int RANDOM_VECTORS = 101; // 随机向量个数，签名长度
 	public final static int PERMUTATION = 11; // 随机变换个数
 	public final static int WINDOW = 10; // 滑动窗口
@@ -41,23 +40,23 @@ public class EntityDriver {
 					+ String.valueOf(RANDOM_VECTORS) + "_"
 					+ String.valueOf(PERMUTATION) + "_"
 					+ String.valueOf(WINDOW) + "/");
+
 	public final static Path randomVectorPath = new Path(
-			"hdfs://linux-rq7e.site:9000/entityInput/randomVector.txt");
+			"hdfs://linux-rq7e.site:9000/entityInput/randomVector.txt"); // 预生成随机向量文件
 
 	public static void main(String[] args) throws Exception {
 
 		Configuration conf = new Configuration();
 
+		// 生成公用的随机向量文件
 		RandomGeneration.randomVector(conf);
 
 		FileSystem hdfs = FileSystem.get(conf);
 		hdfs.delete(outputFolder, true);
 		hdfs.delete(outputFolder2, true);
 
-		// 分布式缓存文件：随机向量列表
+		// 获取分布式缓存文件路径
 		DistributedCache.addCacheFile(randomVectorPath.toUri(), conf);
-
-		FileStatus stats[] = hdfs.listStatus(inputFolder);
 
 		String[] otherArgs = new GenericOptionsParser(conf, args)
 				.getRemainingArgs();
@@ -73,10 +72,11 @@ public class EntityDriver {
 		job.setMapperClass(EntityMap.class);
 		job.setReducerClass(EntityReduce.class);
 
-		if (PERMUTATION >= 11)
+		if (PERMUTATION >= 11) // 依据随机变换数量决定reduce数量
 			job.setNumReduceTasks(11);
 		else
 			job.setNumReduceTasks(PERMUTATION);
+
 		job.setMapOutputKeyClass(IntWritable.class);
 		job.setMapOutputValueClass(EntityData.class);
 
@@ -84,6 +84,7 @@ public class EntityDriver {
 		// job.setOutputValueClass(FloatWritable.class);
 		job.setOutputValueClass(Text.class);
 
+		FileStatus stats[] = hdfs.listStatus(inputFolder);
 		for (int i = 0; i < stats.length; i++) {
 			if (!stats[i].isDir())
 				FileInputFormat.addInputPath(job, stats[i].getPath());
