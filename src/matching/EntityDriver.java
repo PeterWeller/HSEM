@@ -48,7 +48,7 @@ public class EntityDriver {
 
 		Configuration conf = new Configuration();
 
-		// 生成公用的随机向量文件
+		//生成公用的随机向量文件
 		RandomGeneration.randomVector(conf);
 
 		FileSystem hdfs = FileSystem.get(conf);
@@ -72,7 +72,7 @@ public class EntityDriver {
 		job.setMapperClass(EntityMap.class);
 		job.setReducerClass(EntityReduce.class);
 
-		if (PERMUTATION >= 11) // 依据随机变换数量决定reduce数量
+		if (PERMUTATION >= 11) //依据随机变换数量决定reduce数量
 			job.setNumReduceTasks(11);
 		else
 			job.setNumReduceTasks(PERMUTATION);
