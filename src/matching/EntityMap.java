@@ -80,7 +80,9 @@ public class EntityMap extends Mapper<Object, Text, IntWritable, EntityData> {
 
 			EntityData outputValue = new EntityData();
 			boolean[] permutedSignature = new boolean[EntityDriver.DIMENSION];
-			a = random.nextInt(EntityDriver.RANDOM_VECTORS - 2) + 1;
+			do {
+				a = random.nextInt(EntityDriver.RANDOM_VECTORS - 2) + 1;
+			} while (primeCheck(EntityDriver.PERMUTATION, a) == false);
 			b = random.nextInt(EntityDriver.RANDOM_VECTORS - 2) + 1;
 			for (int j = 0; j < EntityDriver.RANDOM_VECTORS; j++) {
 				newPosition = (a * j + b) % EntityDriver.RANDOM_VECTORS;
@@ -89,6 +91,15 @@ public class EntityMap extends Mapper<Object, Text, IntWritable, EntityData> {
 			outputValue.set(new IntWritable(Integer.parseInt(segment[0])),
 					permutedSignature);
 			context.write(new IntWritable(i), outputValue);
+		}
+	}
+
+	public boolean primeCheck(int max, int min) {
+		int mo = max % min;
+		if (mo == 0) {
+			return min == 1 ? true : false;
+		} else {
+			return primeCheck(min, mo);
 		}
 	}
 }
