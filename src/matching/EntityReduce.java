@@ -7,12 +7,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.hadoop.io.FloatWritable;
 import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
 
-public class EntityReduce extends Reducer<IntWritable, EntityData, Text, Text> {
+public class EntityReduce extends
+		Reducer<IntWritable, EntityData, IntWritable, EntityPairData> {
 
 	@SuppressWarnings("unchecked")
 	public static Map.Entry[] getSortedHashtableByValue(Map h) {
@@ -33,8 +32,9 @@ public class EntityReduce extends Reducer<IntWritable, EntityData, Text, Text> {
 
 	public void reduce(IntWritable key, Iterable<EntityData> values,
 			Context context) throws IOException, InterruptedException {
-		Text outputKey = new Text();
-		Text outputValue = new Text();
+
+		IntWritable outputKey = new IntWritable();
+		EntityPairData outputValue = new EntityPairData();
 		// FloatWritable outputValue = new FloatWritable();
 		Map<Integer, String> m = new HashMap<Integer, String>();
 		for (EntityData val : values) {
@@ -46,18 +46,20 @@ public class EntityReduce extends Reducer<IntWritable, EntityData, Text, Text> {
 		for (int i = 0; i < entries.length; i++) {
 			for (int j = 1; j <= EntityDriver.WINDOW
 					&& (i + j) < entries.length; j++) {
+				boolean[] firstSig = new boolean[EntityDriver.RANDOM_VECTORS];
+				boolean[] secondSig = new boolean[EntityDriver.RANDOM_VECTORS];
+				for (int b = 0; b < EntityDriver.RANDOM_VECTORS; b++) {
+					firstSig[b] = entries[i].getValue().charAt(b) == '1' ? true
+							: false;
+					secondSig[b] = entries[i + j].getValue().charAt(b) == '1' ? true
+							: false;
+				}
 				if (entries[i].getKey() < entries[i + j].getKey()) {
-					outputKey.set(entries[i].getKey() + "\t"
-							+ entries[i + j].getKey());
-
-					outputValue.set(entries[i].getValue() + "\t"
-							+ entries[i + j].getValue());
+					outputValue.set(entries[i].getKey(),
+							entries[i + j].getKey(), firstSig, secondSig);
 				} else {
-					outputKey.set(entries[i + j].getKey() + "\t"
-							+ entries[i].getKey());
-
-					outputValue.set(entries[i + j].getValue() + "\t"
-							+ entries[i].getValue());
+					outputValue.set(entries[i + j].getKey(),
+							entries[i].getKey(), secondSig, firstSig);
 				}
 				// hammingDistance = 0.0f;
 				// for (int k = 0; k < EntityDriver.RANDOM_VECTORS; k++) {
@@ -68,6 +70,7 @@ public class EntityReduce extends Reducer<IntWritable, EntityData, Text, Text> {
 				//
 				// outputValue.set(hammingDistance
 				// / ((float) EntityDriver.RANDOM_VECTORS));
+				outputKey = outputValue.getFirstEntityNum();
 				context.write(outputKey, outputValue);
 			}
 		}

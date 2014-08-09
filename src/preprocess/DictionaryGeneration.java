@@ -20,6 +20,9 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
 public class DictionaryGeneration {
+	private final static Path inputFolder = new Path(
+			"hdfs://linux-rq7e.site:9000/citeX/newCiteSeer.txt");
+	
     public static class TokenizerMapper extends
             Mapper<Object, Text, Text, IntWritable> {
         
@@ -32,7 +35,7 @@ public class DictionaryGeneration {
             String line = value.toString();
             String[] segment = line.split("\t");
            
-            for(int i = 2; i < segment.length; i++ ){
+            for(int i = 1; i < segment.length; i++ ){
                 word.set(segment[i]);
                 context.write(word, one);
             }
@@ -78,11 +81,11 @@ public class DictionaryGeneration {
         Configuration conf = new Configuration();
         String[] otherArgs = new GenericOptionsParser(conf, args)
                 .getRemainingArgs();
-        if (otherArgs.length != 2) {
-            System.err.println("Usage: wordcount <in> <out>");
-            System.exit(2);
+        if (otherArgs.length != 0) {
+            System.err.println("no input!!!");
+            System.exit(0);
         }
-         Path tempDir = new Path("wordcount-temp-" + Integer.toString(
+         Path tempDir = new Path("hdfs://linux-rq7e.site:9000/citeX/out" + Integer.toString(
                     new Random().nextInt(Integer.MAX_VALUE))); //定义一个临时目录
         
         Job job = new Job(conf, "word count");
@@ -95,7 +98,7 @@ public class DictionaryGeneration {
             job.setOutputKeyClass(Text.class);
             job.setOutputValueClass(IntWritable.class);
             
-            FileInputFormat.addInputPath(job, new Path(otherArgs[0]));
+            FileInputFormat.addInputPath(job, inputFolder);
             FileOutputFormat.setOutputPath(job, tempDir);//先将词频统计任务的输出结果写到临时目
                                                          //录中, 下一个排序任务以临时目录为输入目录。
             job.setOutputFormatClass(SequenceFileOutputFormat.class);
@@ -111,7 +114,7 @@ public class DictionaryGeneration {
                 sortJob.setMapperClass(InverseMapper.class);
                 /*将 Reducer 的个数限定为1, 最终输出的结果文件就是一个。*/
                 sortJob.setNumReduceTasks(1); 
-                FileOutputFormat.setOutputPath(sortJob, new Path(otherArgs[1]));
+                FileOutputFormat.setOutputPath(sortJob, new Path("hdfs://linux-rq7e.site:9000/citeX/ans"));
                 
                 sortJob.setOutputKeyClass(IntWritable.class);
                 sortJob.setOutputValueClass(Text.class);

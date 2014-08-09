@@ -7,10 +7,14 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.FloatWritable;
 import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.SequenceFile.CompressionType;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.compress.GzipCodec;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
 
 public class EntityDriver {
@@ -48,7 +52,7 @@ public class EntityDriver {
 
 		Configuration conf = new Configuration();
 
-		//生成公用的随机向量文件
+		// 生成公用的随机向量文件
 		RandomGeneration.randomVector(conf);
 
 		FileSystem hdfs = FileSystem.get(conf);
@@ -72,7 +76,7 @@ public class EntityDriver {
 		job.setMapperClass(EntityMap.class);
 		job.setReducerClass(EntityReduce.class);
 
-		if (PERMUTATION >= 11) //依据随机变换数量决定reduce数量
+		if (PERMUTATION >= 11) // 依据随机变换数量决定reduce数量
 			job.setNumReduceTasks(11);
 		else
 			job.setNumReduceTasks(PERMUTATION);
@@ -80,30 +84,32 @@ public class EntityDriver {
 		job.setMapOutputKeyClass(IntWritable.class);
 		job.setMapOutputValueClass(EntityData.class);
 
-		job.setOutputKeyClass(Text.class);
-		// job.setOutputValueClass(FloatWritable.class);
-		job.setOutputValueClass(Text.class);
-
+		job.setOutputKeyClass(IntWritable.class);
+		job.setOutputValueClass(EntityPairData.class);
+		job.setOutputFormatClass(SequenceFileOutputFormat.class);
 		FileStatus stats[] = hdfs.listStatus(inputFolder);
 		for (int i = 0; i < stats.length; i++) {
 			if (!stats[i].isDir())
 				FileInputFormat.addInputPath(job, stats[i].getPath());
 		}
 
-		FileOutputFormat.setOutputPath(job, outputFolder);
-
+		 SequenceFileOutputFormat.setOutputCompressionType(job,
+		 CompressionType.RECORD);
+		 SequenceFileOutputFormat.setOutputCompressorClass(job,
+		 GzipCodec.class);
+		SequenceFileOutputFormat.setOutputPath(job, outputFolder);
+		// FileOutputFormat.setOutputPath(job, outputFolder);
 		if (job.waitForCompletion(true)) {
 			Job secondJob = new Job(conf, "Deduplication" + "_"
 					+ String.valueOf(RANDOM_VECTORS) + "_"
 					+ String.valueOf(PERMUTATION) + "_"
 					+ String.valueOf(WINDOW));
 			secondJob.setJarByClass(EntityDriver.class);
-
+			secondJob.setInputFormatClass(SequenceFileInputFormat.class);
 			secondJob.setMapperClass(DeduplicationMap.class);
 			secondJob.setReducerClass(DeduplicationReduce.class);
-
 			secondJob.setMapOutputKeyClass(Text.class);
-			secondJob.setMapOutputValueClass(Text.class);
+			secondJob.setMapOutputValueClass(EntityPairData.class);
 			secondJob.setNumReduceTasks(11);
 			secondJob.setOutputKeyClass(Text.class);
 			secondJob.setOutputValueClass(FloatWritable.class);
@@ -113,6 +119,8 @@ public class EntityDriver {
 				if (!stats2[i].isDir())
 					FileInputFormat
 							.addInputPath(secondJob, stats2[i].getPath());
+				// SequenceFileInputFormat
+				// .addInputPath(secondJob, stats2[i].getPath());
 			}
 
 			FileOutputFormat.setOutputPath(secondJob, outputFolder2);

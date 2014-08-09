@@ -7,15 +7,14 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
 
 public class DeduplicationReduce extends
-		Reducer<Text, Text, Text, FloatWritable> {
+		Reducer<Text, EntityPairData, Text, FloatWritable> {
 
-	public void reduce(Text key, Iterable<Text> values, Context context)
+	public void reduce(Text key, Iterable<EntityPairData> values, Context context)
 			throws IOException, InterruptedException {
 		if (values.iterator().hasNext()) {
-			String[] signature = values.iterator().next().toString()
-					.split("\t");
-			char[] signature1 = signature[0].toCharArray();
-			char[] signature2 = signature[1].toCharArray();
+			EntityPairData signatures = values.iterator().next();
+			char[] signature1 = signatures.getFirstSig().toCharArray();
+			char[] signature2 = signatures.getSecondSig().toCharArray();
 			float hammingDistance = 0.0f;
 			for (int i = 0; i < EntityDriver.RANDOM_VECTORS; i++) {
 				hammingDistance += signature1[i] == signature2[i] ? 1 : 0;
